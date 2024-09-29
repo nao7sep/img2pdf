@@ -37,6 +37,18 @@ namespace _img2pdf
                         throw new ArgumentException ("Contains less than two images: " + xSourceDirectoryPath);
                 }
 
+                // _imageMerger currently doesnt copy resolution information from the original images to the merged ones
+                // because, if it does, the simplicity of "not inheriting any metadata" will be lost and we'll have to continually wonder, "What else?"
+                // Then, whenever we find something new that seems relevant and decide to copy it, we'll have to decide whether to regenerate all the existing merged images or not.
+                // That would be highly unproductive.
+
+                // When this program combines images into a PDF file, merged ones by _imageMerger would return 72 DPI as their resolution.
+                // This value is often returned from photo images taken by cameras as well, which makes it a bad choice to auto-change 72 DPI to the default value or a given one.
+
+                // When we wish to auto-combine images into a PDF file, it is reasonable to assume that they are from the same source and have the same resolution.
+                // Otherwise, we'd use a proper app and manually structure the document before saving it as a PDF file.
+                // The best practice should be asking the user to provide the resolution of the original images.
+
                 int? xOriginalResolution;
 
                 while (true)
@@ -79,7 +91,7 @@ namespace _img2pdf
                     {
                         string xPdfFilePath = System.IO.Path.ChangeExtension (xSourceDirectoryPath, ".pdf");
 
-                        using var xPdfWriter = new PdfWriter (xPdfFilePath, xWriterProperties);
+                        using var xPdfWriter = new PdfWriter (xPdfFilePath, xWriterProperties); // Overwrites the file if it exists.
                         using var xPdfDocument = new PdfDocument (xPdfWriter);
                         using var xDocument = new Document (xPdfDocument);
 
@@ -94,6 +106,8 @@ namespace _img2pdf
 
                         for (int temp = 0; temp < xImageFilePaths.Length; temp ++)
                         {
+                            Console.Write ($"\rAdding image {temp + 1} of {xImageFilePaths.Length}...");
+
                             using var xOriginalImage = SixLabors.ImageSharp.Image.Load <Rgba32> (xImageFilePaths [temp]);
 
                             int xOriginalWidth = xOriginalImage.Width,
@@ -102,11 +116,15 @@ namespace _img2pdf
                             int xNewWidth = (int) Math.Round ((double) xOriginalWidth / xResizeFactor.Value),
                                 xNewHeight = (int) Math.Round ((double) xOriginalHeight / xResizeFactor.Value);
 
+                            // 72 DPI is not the only choice for the resolution of a PDF file.
+                            // But historically, it is considered to be: Suitable for PDFs intended primarily for on-screen viewing, web distribution, or general office use.
+
                             float xNewWidthInPoints = (float) (xNewWidth * 72f / xNewResolution),
                                   xNewHeightInPoints = (float) (xNewHeight * 72f / xNewResolution);
 
                             xOriginalImage.Mutate (x => x.Resize (xNewWidth, xNewHeight));
 
+                            // We make a new image and copy the resized one to it.
                             // ImageSharp can strip metadata from images, but let's be extra cautious.
                             // We dont make the same PDF files repeatedly, but the files are sent to many people.
 
@@ -116,7 +134,7 @@ namespace _img2pdf
                             using var xMemoryStream = new MemoryStream ();
                             var xEncoder = new JpegEncoder { Quality = 75, SkipMetadata = true };
                             xNewImage.Save (xMemoryStream, xEncoder);
-                            // xMemoryStream.Position = 0; >= Doesnt seem to be necessary.
+                            // xMemoryStream.Position = 0; >= Doesnt seem necessary.
 
                             var xImageData = ImageDataFactory.Create (xMemoryStream.ToArray ());
                             var xImage = new Image (xImageData);
@@ -129,12 +147,9 @@ namespace _img2pdf
                                 xDocument.Add (new AreaBreak (AreaBreakType.NEXT_PAGE));
 
                             xDocument.Add (xImage);
-
-                            Console.Write ($"\rImage {temp + 1} of {xImageFilePaths.Length} added.");
                         }
 
-                        Console.WriteLine ();
-                        Console.WriteLine ("PDF file created: " + xPdfFilePath);
+                        Console.WriteLine ("\rPDF file created: " + xPdfFilePath);
                     }
 
                     catch (Exception xException)
