@@ -122,6 +122,8 @@ namespace _img2pdf
                             float xNewWidthInPoints = (float) (xNewWidth * 72f / xNewResolution),
                                   xNewHeightInPoints = (float) (xNewHeight * 72f / xNewResolution);
 
+                            // The default resampling algorithm is Bicubic according to the source code.
+                            // https://docs.sixlabors.com/api/ImageSharp/SixLabors.ImageSharp.Processing.KnownResamplers.html
                             xOriginalImage.Mutate (x => x.Resize (xNewWidth, xNewHeight));
 
                             // We make a new image and copy the resized one to it.
@@ -141,9 +143,13 @@ namespace _img2pdf
                             xImage.SetFixedPosition (left: 0, bottom: 0);
                             xImage.ScaleToFit (xNewWidthInPoints, xNewHeightInPoints);
 
+                            // This must be called before adding the AreaBreak.
+                            // Otherwise, pages' sizes and their corresponding images' sizes may differ.
+                            // Like, when I combined a vertical image, a horizontal one and a vertical one, the 3rd image had a horizontal canvas, the rest of which was filled with white.
                             xPdfDocument.SetDefaultPageSize (new PageSize (xNewWidthInPoints, xNewHeightInPoints));
 
                             if (temp > 0)
+                                // https://stackoverflow.com/questions/40859431/adding-a-new-page-in-pdf-using-itext-7
                                 xDocument.Add (new AreaBreak (AreaBreakType.NEXT_PAGE));
 
                             xDocument.Add (xImage);
