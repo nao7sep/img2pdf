@@ -8,7 +8,7 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace _img2pdf
+namespace img2pdf
 {
     class Program
     {
@@ -17,11 +17,11 @@ namespace _img2pdf
             try
             {
                 // In compliance with the AGPL license, the following message must be displayed.
-                Console.WriteLine ("Project Page: https://github.com/nao7sep/_img2pdf");
+                Console.WriteLine ("Project Page: https://github.com/nao7sep/img2pdf");
 
                 if (args.Length == 0)
                 {
-                    Console.WriteLine ("Usage: _img2pdf.exe <image1> <image2> ...");
+                    Console.WriteLine ("Usage: img2pdf.exe <image1> <image2> ...");
                     return;
                 }
 
